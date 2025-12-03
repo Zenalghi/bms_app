@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+// import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
@@ -15,11 +15,19 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'JK-BMS Monitor',
+      title: 'JK-BMS Energy Monitor',
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
+        colorSchemeSeed: Colors.cyan,
         brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF1E1E1E),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
       home: const BmsDashboard(),
     );
@@ -29,23 +37,24 @@ class MyApp extends StatelessWidget {
 // --- DATA MODEL ---
 class BmsState {
   // Sensors
-  String totalVoltage = "0.0";
+  String totalVoltage = "0.000"; // Default 3 decimals
   String current = "0.0";
   String power = "0.0";
   String soc = "0";
   String tempMos = "0.0";
-  List<String> cellVoltages = List.filled(8, "0.000"); // 8 Cell BMS
+  List<String> cellVoltages = List.filled(8, "0.000");
 
   // BMS Switches
   bool isCharging = false;
   bool isDischarging = false;
   bool isBalancing = false;
 
-  // Relay Control (GPIO) - NEW
-  List<bool> relayStates = List.filled(8, false); // 8 Relay
+  // Relay Control (GPIO)
+  List<bool> relayStates = List.filled(8, false);
 
-  // Connection
-  bool isConnected = false;
+  // Connection & System Status
+  bool isMqttConnected = false;
+  String deviceStatus = "offline";
 }
 
 class BmsDashboard extends StatefulWidget {
@@ -58,12 +67,11 @@ class BmsDashboard extends StatefulWidget {
 class _BmsDashboardState extends State<BmsDashboard> {
   final String broker = 'broker.mqtt.cool';
   final int port = 1883;
-  // Client ID Unik agar tidak bentrok
   final String clientIdentifier =
-      'monitor_${DateTime.now().millisecondsSinceEpoch}';
+      'energy_monitor_${DateTime.now().millisecondsSinceEpoch}';
 
-  // TOPIC UPDATED: skpirsi (Typo disengaja)
-  final String topicPrefix = 'skpirsi/bms_unit_1';
+  // Topik sesuai konfigurasi YAML baru
+  final String topicPrefix = 'energy/bms_monitor';
 
   late MqttServerClient client;
   final StreamController<BmsState> _stateController =
@@ -74,6 +82,14 @@ class _BmsDashboardState extends State<BmsDashboard> {
   void initState() {
     super.initState();
     _connectMqtt();
+  }
+
+  // --- HELPER FORMATTING ANGKA ---
+  // Fungsi ini memastikan angka tampil sesuai keinginan (3 digit atau 1 digit)
+  String _formatValue(String value, int decimalPlaces) {
+    double? v = double.tryParse(value);
+    if (v == null) return value; // Jika error/bukan angka, kembalikan aslinya
+    return v.toStringAsFixed(decimalPlaces);
   }
 
   Future<void> _connectMqtt() async {
@@ -90,24 +106,19 @@ class _BmsDashboardState extends State<BmsDashboard> {
     client.connectionMessage = connMess;
 
     try {
-      print('Connecting to $broker...');
       await client.connect();
-    } on NoConnectionException catch (e) {
-      print('Client exception: $e');
-      client.disconnect();
-    } on SocketException catch (e) {
-      print('Socket exception: $e');
+    } catch (e) {
+      print('Exception: $e');
       client.disconnect();
     }
 
     if (client.connectionStatus!.state == MqttConnectionState.connected) {
       print('MQTT Connected');
       setState(() {
-        _currentState.isConnected = true;
+        _currentState.isMqttConnected = true;
         _stateController.add(_currentState);
       });
 
-      // Subscribe Wildcard
       client.subscribe('$topicPrefix/#', MqttQos.atMostOnce);
 
       client.updates!.listen((List<MqttReceivedMessage<MqttMessage?>>? c) {
@@ -119,15 +130,13 @@ class _BmsDashboardState extends State<BmsDashboard> {
         _parseMessage(topic, payload);
       });
     } else {
-      print('Connection failed');
       client.disconnect();
     }
   }
 
   void _onDisconnected() {
-    print('Disconnected');
     setState(() {
-      _currentState.isConnected = false;
+      _currentState.isMqttConnected = false;
       _stateController.add(_currentState);
     });
   }
@@ -135,51 +144,64 @@ class _BmsDashboardState extends State<BmsDashboard> {
   void _parseMessage(String topic, String payload) {
     bool updated = false;
 
-    // 1. Main Sensors
-    if (topic.endsWith('jk-bms_total_voltage/state')) {
-      _currentState.totalVoltage = payload;
-      updated = true;
-    } else if (topic.endsWith('jk-bms_current/state')) {
-      _currentState.current = payload;
-      updated = true;
-    } else if (topic.endsWith('jk-bms_power/state')) {
-      _currentState.power = payload;
-      updated = true;
-    } else if (topic.endsWith('jk-bms_state_of_charge/state')) {
-      _currentState.soc = payload;
-      updated = true;
-    } else if (topic.endsWith('jk-bms_mos_power_tube_temperature/state')) {
-      _currentState.tempMos = payload;
+    // 1. SYSTEM STATUS
+    if (topic == '$topicPrefix/status') {
+      _currentState.deviceStatus = payload;
       updated = true;
     }
-    // 2. BMS Switches
-    else if (topic.endsWith('jk-bms_charging/state')) {
+    // 2. Main Sensors
+    else if (topic.endsWith('jk-bms_total_voltage/state')) {
+      // REQUIREMENT: Tegangan 3 Digit
+      _currentState.totalVoltage = _formatValue(payload, 3);
+      updated = true;
+    } else if (topic.endsWith('jk-bms_current/state')) {
+      // REQUIREMENT: Arus 1 Digit
+      _currentState.current = _formatValue(payload, 1);
+      updated = true;
+    } else if (topic.endsWith('jk-bms_power/state')) {
+      // REQUIREMENT: Power 1 Digit
+      _currentState.power = _formatValue(payload, 1);
+      updated = true;
+    } else if (topic.endsWith('jk-bms_state_of_charge/state')) {
+      _currentState.soc = payload.split('.').first; // SoC ambil bulat saja
+      updated = true;
+    } else if (topic.endsWith('jk-bms_mos_temp/state') ||
+        topic.endsWith('jk-bms_mos_power_tube_temperature/state')) {
+      // REQUIREMENT: Temp 1 Digit
+      _currentState.tempMos = _formatValue(payload, 1);
+      updated = true;
+    }
+    // 3. BMS Switches
+    else if (topic.endsWith('jk-bms_charging_switch/state')) {
       _currentState.isCharging = (payload == 'ON');
       updated = true;
-    } else if (topic.endsWith('jk-bms_discharging/state')) {
+    } else if (topic.endsWith('jk-bms_discharging_switch/state')) {
       _currentState.isDischarging = (payload == 'ON');
       updated = true;
-    } else if (topic.endsWith('jk-bms_balancer/state')) {
+    } else if (topic.endsWith('jk-bms_balancer_switch/state')) {
       _currentState.isBalancing = (payload == 'ON');
       updated = true;
     }
-
-    // 3. Loop: Cell Voltages (1-8)
-    for (int i = 1; i <= 8; i++) {
-      if (topic.endsWith('jk-bms_cell_voltage_$i/state')) {
-        _currentState.cellVoltages[i - 1] = payload;
-        updated = true;
-        break;
+    // 4. Cell Voltages & Relay
+    else {
+      // UPDATE PARSING: "jk-bms_cell_$i" (Sesuai YAML baru)
+      for (int i = 1; i <= 8; i++) {
+        if (topic.endsWith('jk-bms_cell_$i/state')) {
+          _currentState.cellVoltages[i - 1] = _formatValue(
+            payload,
+            3,
+          ); // Cell juga 3 digit
+          updated = true;
+          break;
+        }
       }
-    }
 
-    // 4. Loop: Relay Controls (1-8) -- NEW
-    // Topic format: .../switch/jk-bms_relay_1/state
-    for (int i = 1; i <= 8; i++) {
-      if (topic.endsWith('jk-bms_relay_$i/state')) {
-        _currentState.relayStates[i - 1] = (payload == 'ON');
-        updated = true;
-        break;
+      for (int i = 1; i <= 8; i++) {
+        if (topic.endsWith('load_control_$i/state')) {
+          _currentState.relayStates[i - 1] = (payload == 'ON');
+          updated = true;
+          break;
+        }
       }
     }
 
@@ -188,17 +210,14 @@ class _BmsDashboardState extends State<BmsDashboard> {
     }
   }
 
-  // Toggle untuk BMS (Charge/Discharge/Balance)
   void _toggleBmsSwitch(String component, bool value) {
     final String topic = '$topicPrefix/switch/jk-bms_$component/command';
     _publishCommand(topic, value);
   }
 
-  // Toggle untuk Relay GPIO
   void _toggleRelay(int index, bool value) {
-    // index 0 -> relay 1
     final int relayNum = index + 1;
-    final String topic = '$topicPrefix/switch/jk-bms_relay_$relayNum/command';
+    final String topic = '$topicPrefix/switch/load_control_$relayNum/command';
     _publishCommand(topic, value);
   }
 
@@ -207,7 +226,6 @@ class _BmsDashboardState extends State<BmsDashboard> {
     final builder = MqttClientPayloadBuilder();
     builder.addString(payload);
     client.publishMessage(topic, MqttQos.atMostOnce, builder.payload!);
-    print("Pub: $topic -> $payload");
   }
 
   @override
@@ -217,24 +235,50 @@ class _BmsDashboardState extends State<BmsDashboard> {
     super.dispose();
   }
 
+  // --- UI WIDGETS ---
+
+  Color _getStatusColor(String status) {
+    if (status == 'online') return Colors.greenAccent;
+    if (status == 'searching_device') return Colors.orangeAccent;
+    return Colors.redAccent;
+  }
+
+  String _getStatusText(String status) {
+    if (status == 'online') return "Connected";
+    if (status == 'searching_device') return "Scanning...";
+    return "Offline";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Monitoring BMS"),
+        title: const Text("Energy Monitor"),
+        backgroundColor: const Color(0xFF1E1E1E),
+        elevation: 0,
         actions: [
           StreamBuilder<BmsState>(
             stream: _stateController.stream,
             initialData: _currentState,
             builder: (context, snapshot) {
-              return Container(
-                margin: const EdgeInsets.only(right: 16),
-                child: Icon(
-                  Icons.circle,
-                  color: (snapshot.data?.isConnected ?? false)
-                      ? Colors.green
-                      : Colors.red,
-                  size: 14,
+              final data = snapshot.data!;
+              return Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Chip(
+                  avatar: Icon(
+                    Icons.circle,
+                    color: _getStatusColor(data.deviceStatus),
+                    size: 12,
+                  ),
+                  label: Text(
+                    _getStatusText(data.deviceStatus),
+                    style: TextStyle(
+                      color: _getStatusColor(data.deviceStatus),
+                      fontSize: 12,
+                    ),
+                  ),
+                  backgroundColor: Colors.black54,
+                  side: BorderSide.none,
                 ),
               );
             },
@@ -248,50 +292,21 @@ class _BmsDashboardState extends State<BmsDashboard> {
           final data = snapshot.data!;
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
-              // --- SECTION 1: BMS UTAMA ---
+              // 1. MAIN METRICS
               _buildMainCard(data),
-              const SizedBox(height: 16),
 
+              const SizedBox(height: 20),
+
+              // 2. CELL VOLTAGE MONITORING (POSISI DIPINDAH KESINI)
               Text(
-                "BMS Control",
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildControlCard(
-                    "Charge",
-                    data.isCharging,
-                    Icons.bolt,
-                    (v) => _toggleBmsSwitch('charging', v),
-                  ),
-                  _buildControlCard(
-                    "Discharge",
-                    data.isDischarging,
-                    Icons.output,
-                    (v) => _toggleBmsSwitch('discharging', v),
-                  ),
-                  _buildControlCard(
-                    "Balance",
-                    data.isBalancing,
-                    Icons.balance,
-                    (v) => _toggleBmsSwitch('balancer', v),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              // --- PEMBATAS ---
-              const Divider(thickness: 2, color: Colors.white24),
-              const SizedBox(height: 8),
-
-              // --- SECTION 2: RELAY CONTROL (WIDGET 2 Baris x 4 Kolom) ---
-              Text(
-                "Cell Monitoring",
-                style: Theme.of(context).textTheme.titleSmall,
+                "Cell Voltage Monitoring",
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  letterSpacing: 1,
+                ),
               ),
               const SizedBox(height: 8),
               GridView.builder(
@@ -299,7 +314,7 @@ class _BmsDashboardState extends State<BmsDashboard> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
-                  childAspectRatio: 1.8,
+                  childAspectRatio: 2.2, // Sedikit lebih pipih agar compact
                   crossAxisSpacing: 6,
                   mainAxisSpacing: 6,
                 ),
@@ -307,32 +322,74 @@ class _BmsDashboardState extends State<BmsDashboard> {
                 itemBuilder: (context, index) {
                   return Container(
                     decoration: BoxDecoration(
-                      color: Colors.blueGrey[900],
-                      borderRadius: BorderRadius.circular(4),
+                      color: const Color(0xFF252525),
+                      borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: Colors.white10),
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      "${data.cellVoltages[index]}V",
+                      "${data.cellVoltages[index]} V",
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   );
                 },
               ),
 
-              const Divider(thickness: 1, color: Colors.white12),
+              const SizedBox(height: 24),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 16),
 
-              // --- SECTION 3: CELL VOLTAGES ---
+              // 3. BMS CONTROL
+              Text(
+                "BMS Protection",
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.toggle_on, color: Colors.orangeAccent),
-                  SizedBox(width: 8),
+                  _buildControlCard(
+                    "Charge",
+                    data.isCharging,
+                    Icons.bolt,
+                    (v) => _toggleBmsSwitch('charging_switch', v),
+                  ),
+                  _buildControlCard(
+                    "Discharge",
+                    data.isDischarging,
+                    Icons.output,
+                    (v) => _toggleBmsSwitch('discharging_switch', v),
+                  ),
+                  _buildControlCard(
+                    "Balance",
+                    data.isBalancing,
+                    Icons.balance,
+                    (v) => _toggleBmsSwitch('balancer_switch', v),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 16),
+
+              // 4. LOAD CONTROL (RELAYS)
+              Row(
+                children: [
+                  const Icon(Icons.toggle_on, color: Colors.cyanAccent),
+                  const SizedBox(width: 8),
                   Text(
-                    "Relay Control (GPIO)",
-                    style: Theme.of(context).textTheme.titleMedium,
+                    "Smart Load Control",
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: Colors.white),
                   ),
                 ],
               ),
@@ -341,10 +398,9 @@ class _BmsDashboardState extends State<BmsDashboard> {
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                // 4 Kolom -> Menghasilkan 2 baris untuk 8 item
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
-                  childAspectRatio: 0.85, // Rasio biar agak tinggi buat tombol
+                  childAspectRatio: 0.8,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                 ),
@@ -353,8 +409,8 @@ class _BmsDashboardState extends State<BmsDashboard> {
                   final bool isOn = data.relayStates[index];
                   return Material(
                     color: isOn
-                        ? Colors.orange.withOpacity(0.2)
-                        : Colors.grey[900],
+                        ? Colors.cyan.withOpacity(0.2)
+                        : const Color(0xFF2C2C2C),
                     borderRadius: BorderRadius.circular(8),
                     child: InkWell(
                       onTap: () => _toggleRelay(index, !isOn),
@@ -364,15 +420,16 @@ class _BmsDashboardState extends State<BmsDashboard> {
                         children: [
                           Icon(
                             Icons.power_settings_new,
-                            color: isOn ? Colors.orange : Colors.grey,
-                            size: 28,
+                            color: isOn ? Colors.cyanAccent : Colors.grey[600],
+                            size: 24,
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            "R${index + 1}",
+                            "Load ${index + 1}",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: isOn ? Colors.white : Colors.white54,
+                              fontSize: 11,
+                              color: isOn ? Colors.white : Colors.grey[500],
                             ),
                           ),
                         ],
@@ -390,9 +447,19 @@ class _BmsDashboardState extends State<BmsDashboard> {
 
   Widget _buildMainCard(BmsState data) {
     return Card(
-      color: Colors.blueAccent.withOpacity(0.15),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+      child: Container(
+        padding: const EdgeInsets.all(20.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.cyan.withOpacity(0.15),
+              Colors.blue.withOpacity(0.05),
+            ],
+          ),
+        ),
         child: Column(
           children: [
             Row(
@@ -401,15 +468,22 @@ class _BmsDashboardState extends State<BmsDashboard> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Total Voltage",
-                      style: TextStyle(color: Colors.white70),
+                    Text(
+                      "TOTAL VOLTAGE",
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 10,
+                        letterSpacing: 1.5,
+                      ),
                     ),
+                    const SizedBox(height: 4),
+                    // FORMAT 3 DIGIT
                     Text(
                       "${data.totalVoltage} V",
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 34,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -417,30 +491,40 @@ class _BmsDashboardState extends State<BmsDashboard> {
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    CircularProgressIndicator(
-                      value: (double.tryParse(data.soc) ?? 0) / 100,
-                      strokeWidth: 6,
-                      backgroundColor: Colors.black26,
-                      color: Colors.greenAccent,
+                    SizedBox(
+                      height: 60,
+                      width: 60,
+                      child: CircularProgressIndicator(
+                        value: (double.tryParse(data.soc) ?? 0) / 100,
+                        strokeWidth: 6,
+                        backgroundColor: Colors.white10,
+                        color: Colors.greenAccent,
+                      ),
                     ),
                     Text(
                       "${data.soc}%",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // FORMAT 1 DIGIT (Sesuai helper)
                 _buildMiniStat(
                   Icons.electric_meter,
                   "${data.current} A",
-                  "Arus",
+                  "Current",
                 ),
-                _buildMiniStat(Icons.flash_on, "${data.power} W", "Daya"),
+                Container(width: 1, height: 30, color: Colors.white10),
+                _buildMiniStat(Icons.flash_on, "${data.power} W", "Power"),
+                Container(width: 1, height: 30, color: Colors.white10),
                 _buildMiniStat(Icons.thermostat, "${data.tempMos}°C", "Temp"),
               ],
             ),
@@ -453,11 +537,20 @@ class _BmsDashboardState extends State<BmsDashboard> {
   Widget _buildMiniStat(IconData icon, String value, String label) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white54, size: 18),
+        Row(
+          children: [
+            Icon(icon, color: Colors.grey[400], size: 14),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+            ),
+          ],
+        ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
       ],
     );
@@ -470,27 +563,44 @@ class _BmsDashboardState extends State<BmsDashboard> {
     Function(bool) onChanged,
   ) {
     return Expanded(
-      child: Card(
-        color: value
-            ? Colors.green.withOpacity(0.2)
-            : Colors.red.withOpacity(0.1),
+      child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: value ? const Color(0xFF1B3A2D) : const Color(0xFF2C2C2C),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: value ? Colors.green.withOpacity(0.3) : Colors.transparent,
+          ),
+        ),
         child: InkWell(
           onTap: () => onChanged(!value),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               children: [
-                Icon(icon, color: value ? Colors.greenAccent : Colors.grey),
+                Icon(
+                  icon,
+                  color: value ? Colors.greenAccent : Colors.grey,
+                  size: 22,
+                ),
                 const SizedBox(height: 8),
-                Text(title, style: const TextStyle(fontSize: 12)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: value ? Colors.white : Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 4),
                 SizedBox(
-                  height: 40,
+                  height: 24,
                   child: Switch(
                     value: value,
                     onChanged: onChanged,
                     activeColor: Colors.greenAccent,
+                    inactiveThumbColor: Colors.grey,
+                    inactiveTrackColor: Colors.black26,
                   ),
                 ),
               ],
