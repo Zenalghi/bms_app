@@ -485,11 +485,13 @@ class _BmsDashboardState extends State<BmsDashboard> {
                 Icon(icon, color: value ? Colors.greenAccent : Colors.grey),
                 const SizedBox(height: 8),
                 Text(title, style: const TextStyle(fontSize: 12)),
-                Switch(
-                  padding: EdgeInsets.only(top: 10),
-                  value: value,
-                  onChanged: onChanged,
-                  activeColor: Colors.greenAccent,
+                SizedBox(
+                  height: 40,
+                  child: Switch(
+                    value: value,
+                    onChanged: onChanged,
+                    activeColor: Colors.greenAccent,
+                  ),
                 ),
               ],
             ),
