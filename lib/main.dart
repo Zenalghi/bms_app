@@ -17,6 +17,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'JK-BMS Energy Monitor',
       theme: ThemeData(
+        fontFamily: 'Poppins',
         useMaterial3: true,
         colorSchemeSeed: Colors.cyan,
         brightness: Brightness.dark,
@@ -253,7 +254,10 @@ class _BmsDashboardState extends State<BmsDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Energy Monitor"),
+        title: const Text(
+          "Energy Monitor",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: const Color(0xFF1E1E1E),
         elevation: 0,
         actions: [
