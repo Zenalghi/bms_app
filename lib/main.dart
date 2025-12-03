@@ -339,9 +339,9 @@ class _BmsDashboardState extends State<BmsDashboard> {
                 },
               ),
 
-              const SizedBox(height: 24),
+              // const SizedBox(height: 24),
               const Divider(color: Colors.white10),
-              const SizedBox(height: 16),
+              // const SizedBox(height: 16),
 
               // 3. BMS CONTROL
               Text(
@@ -376,9 +376,9 @@ class _BmsDashboardState extends State<BmsDashboard> {
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 13),
               const Divider(color: Colors.white10),
-              const SizedBox(height: 16),
+              // const SizedBox(height: 16),
 
               // 4. LOAD CONTROL (RELAYS)
               Row(
