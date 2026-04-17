@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../models/bms_state.dart';
-import 'analytics_screen.dart';
+// import 'analytics_screen.dart';
 import 'control_screen.dart';
 import 'metrics_screen.dart';
-import 'bms_control_screen.dart'; // IMPORT LAYAR BARU
+import 'bms_control_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({
@@ -12,12 +13,14 @@ class MainNavigation extends StatefulWidget {
     required this.onRelayToggle,
     required this.onBmsSwitchToggle,
     required this.onBmsNumberSubmit,
+    required this.onRefresh, // <--- TERIMA DARI MAIN
   });
 
   final Stream<BmsState> stateStream;
   final void Function(int index, bool value) onRelayToggle;
   final void Function(String switchName, bool value) onBmsSwitchToggle;
   final void Function(String settingName, String value) onBmsNumberSubmit;
+  final Future<void> Function() onRefresh; // <--- DEKLARASI FUNGSI
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -39,7 +42,10 @@ class _MainNavigationState extends State<MainNavigation> {
             child: IndexedStack(
               index: _selectedIndex,
               children: [
-                MetricsScreen(state: state),
+                MetricsScreen(
+                  state: state,
+                  onRefresh: widget.onRefresh, // <--- OPER KE METRICS SCREEN
+                ),
                 // AnalyticsScreen(state: state),
                 BmsControlScreen(
                   state: state,

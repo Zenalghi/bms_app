@@ -27,10 +27,6 @@ class ControlScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Row Indikator Status (Koneksi & Balancer)
-          // _ConnectivityRow(state: state),
-          const SizedBox(height: 16),
-
           // Card Kontrol Relay
           RelayControlCard(
             relayStates: state.relayStates,
@@ -67,85 +63,6 @@ class _SectionHeader extends StatelessWidget {
           ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
         ),
       ],
-    );
-  }
-}
-
-class _ConnectivityRow extends StatelessWidget {
-  const _ConnectivityRow({required this.state});
-
-  final BmsState state;
-
-  @override
-  Widget build(BuildContext context) {
-    // Indikator Online: Jika tegangan terbaca > 0, dianggap data sudah masuk
-    final bool isBmsOnline = state.totalVoltage > 0;
-
-    // Indikator Balancer: Membaca status balancing langsung dari BMS
-    final bool isBalancing = state.isBalancing;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _StatusPill(
-            label: isBmsOnline ? 'BMS LINKED' : 'WAITING DATA',
-            color: isBmsOnline
-                ? const Color(0xFF4CAF50)
-                : const Color(0xFFD32F2F),
-            isActive: isBmsOnline,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatusPill(
-            label: isBalancing ? 'BALANCING ON' : 'BAL. STANDBY',
-            color: isBalancing ? const Color(0xFFFFC107) : Colors.white30,
-            isActive: isBalancing,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({
-    required this.label,
-    required this.color,
-    required this.isActive,
-  });
-
-  final String label;
-  final Color color;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isActive
-            ? color.withValues(alpha: 0.18)
-            : Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: isActive
-              ? color.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: isActive ? color : Colors.white54,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ),
     );
   }
 }

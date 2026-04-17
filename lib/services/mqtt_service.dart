@@ -22,19 +22,37 @@ class MqttService {
 
   Future<void> connect() async {
     try {
+      print('Menghubungkan ke MQTT Broker...');
       await client.connect();
+      print('MQTT Terhubung!');
       _subscribeToTopics();
     } catch (e) {
+      print('Gagal terhubung: $e');
       client.disconnect();
     }
   }
+
+  // === FUNGSI RECONNECT BARU ===
+  Future<void> reconnect() async {
+    print('Mencoba menyambungkan ulang MQTT...');
+    if (client.connectionStatus?.state == MqttConnectionState.connected) {
+      client.disconnect();
+    }
+
+    // Ubah status ke offline sementara agar UI tahu sedang proses reconnect
+    currentState = currentState.copyWith(bmsStatus: 'offline');
+    onStateUpdated(currentState);
+
+    await connect();
+  }
+  // =============================
 
   void _subscribeToTopics() {
     client.subscribe('bms_panel/260216/data/main', MqttQos.atMostOnce);
     client.subscribe('bms_panel/260216/data/soc_bawaan', MqttQos.atMostOnce);
     client.subscribe('bms_panel/260216/state/switches', MqttQos.atMostOnce);
     client.subscribe('bms_panel/260216/state/settings', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/260216/status', MqttQos.atMostOnce); // BARU
+    client.subscribe('bms_panel/260216/status', MqttQos.atMostOnce);
 
     client.updates!.listen((c) {
       final recMess = c[0].payload as MqttPublishMessage;
@@ -89,9 +107,10 @@ class MqttService {
           balanceTrigV: (data['balance_trig_v'] ?? 0).toDouble(),
         );
       }
+
       onStateUpdated(currentState);
     } catch (e) {
-      print('Error parsing dari $topic: $e');
+      print('Error parsing JSON dari $topic: $e');
     }
   }
 

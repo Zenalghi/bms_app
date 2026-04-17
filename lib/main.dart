@@ -44,7 +44,12 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
-  // Fungsi Relay
+  // === FUNGSI REFRESH BARU ===
+  Future<void> _handleRefresh() async {
+    await _mqttService.reconnect();
+  }
+  // ===========================
+
   void _handleRelayToggle(int index, bool value) {
     _state = _state.copyWith(
       relayStates: List<bool>.generate(
@@ -58,9 +63,7 @@ class _MyAppState extends State<MyApp> {
     _mqttService.publishRelayCommand(index, value);
   }
 
-  // Fungsi BMS Switch (Charge/Discharge/Balance)
   void _handleBmsSwitchToggle(String switchName, bool value) {
-    // Kita optimis update UI lokal
     if (switchName == 'charge') _state = _state.copyWith(isCharging: value);
     if (switchName == 'discharge')
       _state = _state.copyWith(isDischarging: value);
@@ -71,10 +74,7 @@ class _MyAppState extends State<MyApp> {
     _mqttService.publishBmsSwitchCommand(switchName, value);
   }
 
-  // Fungsi BMS Numeric Settings (Capacity/Cell Count/Trig V)
   void _handleBmsNumberSubmit(String settingName, String value) {
-    // Karena ini angka, kita biarkan ESP32 memprosesnya dulu dan membalas via payload /settings
-    // Kita langsung kirim commandnya saja.
     _mqttService.publishBmsNumberCommand(settingName, value);
   }
 
@@ -107,6 +107,7 @@ class _MyAppState extends State<MyApp> {
         onRelayToggle: _handleRelayToggle,
         onBmsSwitchToggle: _handleBmsSwitchToggle,
         onBmsNumberSubmit: _handleBmsNumberSubmit,
+        onRefresh: _handleRefresh,
       ),
     );
   }

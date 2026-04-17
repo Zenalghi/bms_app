@@ -2,27 +2,22 @@ import 'package:flutter/material.dart';
 import '../models/bms_state.dart';
 
 class MetricsScreen extends StatelessWidget {
-  const MetricsScreen({super.key, required this.state});
+  const MetricsScreen({
+    super.key,
+    required this.state,
+    required this.onRefresh, // <--- TERIMA DARI NAVIGASI
+  });
 
   final BmsState state;
+  final Future<void> Function() onRefresh; // <--- DEKLARASI FUNGSI
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      // Kustomisasi warna loading spinner agar senada dengan tema aplikasi
       color: const Color(0xFF00BCD4),
       backgroundColor: const Color(0xFF1A1A1A),
-
-      // Fungsi yang dipanggil saat user menarik layar ke bawah
-      onRefresh: () async {
-        // Saat ini kita beri efek delay 1.5 detik untuk simulasi refresh UI.
-        // Jika ke depannya kamu ingin ini benar-benar merestart koneksi MQTT,
-        // kamu bisa mengoper fungsi reconnect dari main.dart ke sini.
-        await Future.delayed(const Duration(milliseconds: 1500));
-      },
+      onRefresh: onRefresh, // <--- PANGGIL SAAT DITARIK
       child: SingleChildScrollView(
-        // Wajib menggunakan AlwaysScrollableScrollPhysics agar selalu bisa ditarik ke bawah
-        // meskipun isi kontennya tidak lebih panjang dari layar HP.
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
@@ -51,10 +46,7 @@ class MetricsScreen extends StatelessWidget {
               decimal: 3,
               color: const Color(0xFF00BCD4),
             ),
-
             const SizedBox(height: 16),
-
-            // Grid Wire Resistance (4x2)
             _SmallGridCard(
               title: 'Wire Resistance',
               values: state.wireRes,
