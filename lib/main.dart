@@ -86,7 +86,10 @@ class _MyAppState extends State<MyApp> {
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         physics: const BouncingScrollPhysics(),
       ),
-      theme: ThemeData.dark(useMaterial3: true).copyWith(
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        fontFamily: 'Poppins',
         scaffoldBackgroundColor: const Color(0xFF121212),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF00BCD4),

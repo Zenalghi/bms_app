@@ -8,45 +8,62 @@ class MetricsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header dengan indikator status Online/Offline MQTT
-          _SectionHeader(
-            title: 'Electrical Metrics',
-            subtitle: 'Real-time power and battery health monitoring',
-            status: state.bmsStatus,
-          ),
-          const SizedBox(height: 16),
+    return RefreshIndicator(
+      // Kustomisasi warna loading spinner agar senada dengan tema aplikasi
+      color: const Color(0xFF00BCD4),
+      backgroundColor: const Color(0xFF1A1A1A),
 
-          // Kartu Utama (Total Voltage, Current, Power, Temps, Capacity)
-          _TotalVoltageCard(state: state),
+      // Fungsi yang dipanggil saat user menarik layar ke bawah
+      onRefresh: () async {
+        // Saat ini kita beri efek delay 1.5 detik untuk simulasi refresh UI.
+        // Jika ke depannya kamu ingin ini benar-benar merestart koneksi MQTT,
+        // kamu bisa mengoper fungsi reconnect dari main.dart ke sini.
+        await Future.delayed(const Duration(milliseconds: 1500));
+      },
+      child: SingleChildScrollView(
+        // Wajib menggunakan AlwaysScrollableScrollPhysics agar selalu bisa ditarik ke bawah
+        // meskipun isi kontennya tidak lebih panjang dari layar HP.
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header dengan indikator status Online/Offline MQTT
+            _SectionHeader(
+              title: 'Electrical Metrics',
+              subtitle: 'Real-time power and battery monitoring',
+              status: state.bmsStatus,
+            ),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 16),
+            // Kartu Utama (Total Voltage, Current, Power, Temps, Capacity)
+            _TotalVoltageCard(state: state),
 
-          // Grid Cell Voltages (4x2)
-          _SmallGridCard(
-            title: 'Cell Voltages',
-            values: state.cellVoltages,
-            unit: 'V',
-            decimal: 3,
-            color: const Color(0xFF00BCD4),
-          ),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 16),
+            // Grid Cell Voltages (4x2)
+            _SmallGridCard(
+              title: 'Cell Voltages',
+              values: state.cellVoltages,
+              unit: 'V',
+              decimal: 3,
+              color: const Color(0xFF00BCD4),
+            ),
 
-          // Grid Wire Resistance (4x2)
-          _SmallGridCard(
-            title: 'Wire Resistance',
-            values: state.wireRes,
-            unit: 'mΩ',
-            decimal: 3,
-            color: Colors.orangeAccent,
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            // Grid Wire Resistance (4x2)
+            _SmallGridCard(
+              title: 'Wire Resistance',
+              values: state.wireRes,
+              unit: 'mΩ',
+              decimal: 3,
+              color: Colors.orangeAccent,
+            ),
+          ],
+        ),
       ),
     );
   }

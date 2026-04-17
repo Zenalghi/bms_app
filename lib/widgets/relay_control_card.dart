@@ -12,11 +12,24 @@ class RelayControlCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Label dan ikon dibuat umum untuk keperluan hardware relay
     final relays = <_RelayDescriptor>[
-      const _RelayDescriptor(name: 'LED Bulb 1', icon: Icons.lightbulb_outline),
-      const _RelayDescriptor(name: 'LED Bulb 2', icon: Icons.lightbulb_outline),
-      const _RelayDescriptor(name: 'LED Bulb 3', icon: Icons.lightbulb_outline),
-      const _RelayDescriptor(name: 'DC Fan', icon: Icons.air),
+      const _RelayDescriptor(
+        name: 'Relay Output 1',
+        icon: Icons.settings_input_component,
+      ),
+      const _RelayDescriptor(
+        name: 'Relay Output 2',
+        icon: Icons.settings_input_component,
+      ),
+      const _RelayDescriptor(
+        name: 'Relay Output 3',
+        icon: Icons.settings_input_component,
+      ),
+      const _RelayDescriptor(
+        name: 'Relay Output 4',
+        icon: Icons.settings_input_component,
+      ),
     ];
 
     return Container(
@@ -37,31 +50,31 @@ class RelayControlCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '2x2 output map for the MQTT-controlled loads',
+            '4-channel output map for MQTT-controlled loads',
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: Colors.white54),
           ),
           const SizedBox(height: 16),
-          GridView.builder(
+
+          // Diubah dari GridView menjadi ListView untuk susunan 1x4 ke bawah
+          ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: relays.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.15,
-            ),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final relay = relays[index];
               final enabled = relayStates[index];
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   color: enabled
                       ? relay.accentColor.withValues(alpha: 0.14)
                       : const Color(0xFF202020),
@@ -71,46 +84,57 @@ class RelayControlCard extends StatelessWidget {
                         : Colors.white.withValues(alpha: 0.06),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          relay.icon,
-                          color: enabled ? relay.accentColor : Colors.white70,
-                        ),
-                        const Spacer(),
-                        Switch.adaptive(
-                          value: enabled,
-                          activeThumbColor: relay.accentColor,
-                          activeTrackColor: relay.accentColor.withValues(
-                            alpha: 0.28,
-                          ),
-                          onChanged: (value) => onRelayChanged(index, value),
-                        ),
-                      ],
+                    // Ikon diletakkan di dalam lingkaran agar lebih rapi
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: enabled
+                            ? relay.accentColor.withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        relay.icon,
+                        color: enabled ? relay.accentColor : Colors.white70,
+                        size: 22,
+                      ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          relay.name,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          enabled ? 'Active' : 'Inactive',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: enabled
-                                    ? relay.accentColor
-                                    : Colors.white54,
-                              ),
-                        ),
-                      ],
+                    const SizedBox(width: 16),
+
+                    // Teks diletakkan di tengah
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            relay.name,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            enabled ? 'Active' : 'Inactive',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: enabled
+                                      ? relay.accentColor
+                                      : Colors.white54,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Switch diletakkan di ujung kanan
+                    Switch.adaptive(
+                      value: enabled,
+                      activeThumbColor: relay.accentColor,
+                      activeTrackColor: relay.accentColor.withValues(
+                        alpha: 0.28,
+                      ),
+                      onChanged: (value) => onRelayChanged(index, value),
                     ),
                   ],
                 ),
@@ -129,6 +153,6 @@ class _RelayDescriptor {
   final String name;
   final IconData icon;
 
-  Color get accentColor =>
-      icon == Icons.air ? const Color(0xFF64B5F6) : const Color(0xFFFFC107);
+  // Menggunakan warna Cyan standar aplikasi untuk semua relay
+  Color get accentColor => const Color(0xFF00BCD4);
 }
