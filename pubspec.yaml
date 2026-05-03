@@ -36,6 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   mqtt_client: ^10.11.1
   flutter_launcher_icons: ^0.14.4
+  share_plus: ^13.1.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

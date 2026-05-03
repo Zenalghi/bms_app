@@ -40,6 +40,7 @@ class ControlScreen extends StatelessWidget {
             RelayControlCard(
               relayStates: state.relayStates,
               onRelayChanged: onRelayToggle,
+              state: state,
             ),
           ],
         ),

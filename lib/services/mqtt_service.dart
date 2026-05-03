@@ -45,14 +45,18 @@ class MqttService {
 
     await connect();
   }
-  // =============================
 
+  // =============================
+  final Map<int, Map<String, dynamic>> _pendingRelayCommands = {};
   void _subscribeToTopics() {
     client.subscribe('bms_panel/2602165/data/main', MqttQos.atMostOnce);
     client.subscribe('bms_panel/2602165/data/soc_bawaan', MqttQos.atMostOnce);
     client.subscribe('bms_panel/2602165/state/switches', MqttQos.atMostOnce);
     client.subscribe('bms_panel/2602165/state/settings', MqttQos.atMostOnce);
     client.subscribe('bms_panel/2602165/status', MqttQos.atMostOnce);
+
+    // Topik baru khusus untuk konfirmasi balik status Relay dari ESP32
+    client.subscribe('bms_panel/2602165/state/relays', MqttQos.atMostOnce);
 
     client.updates!.listen((c) {
       final recMess = c[0].payload as MqttPublishMessage;
@@ -65,7 +69,6 @@ class MqttService {
 
   void _handleMessage(String topic, String payload) {
     try {
-      // Handle status LWT (Last Will and Testament) biasa berupa teks murni, bukan JSON
       if (topic.endsWith('/status')) {
         currentState = currentState.copyWith(bmsStatus: payload);
         onStateUpdated(currentState);
@@ -74,7 +77,57 @@ class MqttService {
 
       final data = jsonDecode(payload);
 
-      if (topic.contains('data/main')) {
+      // LOGIKA STOPWATCH RESPON TIME RELAY
+      if (topic.contains('state/relays')) {
+        List<int?> newOnMs = List.from(currentState.latestOnMs);
+        List<int?> newOffMs = List.from(currentState.latestOffMs);
+        List<RelayTestLog> newLogs = List.from(currentState.relayLogs);
+
+        bool isUpdated = false;
+
+        // Cek 4 relay
+        for (int i = 0; i < 4; i++) {
+          String key = 'relay_${i + 1}'; // contoh: relay_1
+          if (data.containsKey(key)) {
+            String actualState = data[key]; // "ON" atau "OFF"
+
+            // Cek apakah relay ini sedang kita tunggu responsnya
+            if (_pendingRelayCommands.containsKey(i)) {
+              if (_pendingRelayCommands[i]!['expectedState'] == actualState) {
+                // Berhasil! Hitung selisih waktu
+                DateTime startTime = _pendingRelayCommands[i]!['startTime'];
+                int responseTimeMs = DateTime.now()
+                    .difference(startTime)
+                    .inMilliseconds;
+
+                // Hapus dari antrean
+                _pendingRelayCommands.remove(i);
+
+                // Update UI log
+                if (actualState == 'ON')
+                  newOnMs[i] = responseTimeMs;
+                else
+                  newOffMs[i] = responseTimeMs;
+
+                // Masukkan ke database untuk dieksport CSV
+                newLogs.add(RelayTestLog(i, actualState, responseTimeMs));
+                isUpdated = true;
+              }
+            }
+          }
+        }
+
+        if (isUpdated) {
+          currentState = currentState.copyWith(
+            latestOnMs: newOnMs,
+            latestOffMs: newOffMs,
+            relayLogs: newLogs,
+          );
+        }
+      }
+      // Sisa parsing data lainnya (main, soc_bawaan, switches) tetap di sini...
+      else if (topic.contains('data/main')) {
+        // ... kode bawaanmu sebelumnya ...
         currentState = currentState.copyWith(
           totalVoltage: (data['voltage'] ?? 0).toDouble(),
           current: (data['current'] ?? 0).toDouble(),
@@ -123,19 +176,26 @@ class MqttService {
       'bms_panel/2602165/switch/relay_3/command',
       'bms_panel/2602165/switch/relay_4/command',
     ];
+
+    // MULAI STOPWATCH
+    _pendingRelayCommands[index] = {
+      'startTime': DateTime.now(),
+      'expectedState': command,
+    };
+
     _publishString(relayTopics[index], command);
   }
 
   // Kontrol Switch Internal BMS (Charge/Discharge/Balance)
   void publishBmsSwitchCommand(String switchName, bool isOn) {
     final command = isOn ? 'ON' : 'OFF';
-    final topic = 'bms_panel/2602165/switch/${switchName}_switch/command';
+    final topic = 'bms_panel/26021655/switch/${switchName}_switch/command';
     _publishString(topic, command);
   }
 
   // Kontrol Setting Angka BMS (Cell Count/Capacity/Balance Trig)
   void publishBmsNumberCommand(String settingName, String value) {
-    final topic = 'bms_panel/2602165/number/$settingName/command';
+    final topic = 'bms_panel/26021655/number/$settingName/command';
     _publishString(topic, value);
   }
 

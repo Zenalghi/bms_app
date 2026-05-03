@@ -1,3 +1,11 @@
+// Model untuk menyimpan log riwayat per-tekanan switch
+class RelayTestLog {
+  final int relayIndex;
+  final String command;
+  final int responseMs;
+  RelayTestLog(this.relayIndex, this.command, this.responseMs);
+}
+
 class BmsState {
   BmsState({
     required this.socEKF,
@@ -23,42 +31,30 @@ class BmsState {
     required this.balanceTrigV,
     // Status
     required this.bmsStatus,
+    // BARU UNTUK SKRIPSI
+    required List<int?> latestOnMs,
+    required List<int?> latestOffMs,
+    required List<RelayTestLog> relayLogs,
   }) : cellVoltages = List<double>.of(cellVoltages),
        wireRes = List<double>.of(wireRes),
-       relayStates = List<bool>.of(relayStates);
+       relayStates = List<bool>.of(relayStates),
+       latestOnMs = List<int?>.of(latestOnMs),
+       latestOffMs = List<int?>.of(latestOffMs),
+       relayLogs = List<RelayTestLog>.of(relayLogs);
 
-  // Core Metrics
-  final double socEKF;
-  final double socCC;
-  final double socKF;
-  final double soh;
-  final double capacityRemain;
-
-  // Electrical & Thermal
-  final double totalVoltage;
-  final double current;
-  final double power;
-  final double tempMos;
-  final double batTemp1;
-  final double batTemp2;
-
-  // Arrays
-  final List<double> cellVoltages;
-  final List<double> wireRes;
+  final double socEKF, socCC, socKF, soh, capacityRemain;
+  final double totalVoltage, current, power, tempMos, batTemp1, batTemp2;
+  final List<double> cellVoltages, wireRes;
   final List<bool> relayStates;
-
-  // Internal Switches
-  final bool isBalancing;
-  final bool isCharging;
-  final bool isDischarging;
-
-  // Settings
+  final bool isBalancing, isCharging, isDischarging;
   final int cellCountSetting;
-  final double capacitySetting;
-  final double balanceTrigV;
-
-  // Connectivity
+  final double capacitySetting, balanceTrigV;
   final String bmsStatus;
+
+  // BARU UNTUK SKRIPSI
+  final List<int?> latestOnMs;
+  final List<int?> latestOffMs;
+  final List<RelayTestLog> relayLogs;
 
   factory BmsState.initial() {
     return BmsState(
@@ -73,42 +69,48 @@ class BmsState {
       batTemp1: 0.0,
       batTemp2: 0.0,
       capacityRemain: 0.0,
-      cellVoltages: List.filled(8, 0.0), // Konfigurasi default 8S
+      cellVoltages: List.filled(8, 0.0),
       wireRes: List.filled(8, 0.0),
       isBalancing: false,
       isCharging: false,
       isDischarging: false,
-      relayStates: List.filled(4, false), // 4 Channel Relay
-      cellCountSetting: 8, // Default Cell Count: 8
-      capacitySetting: 22.0, // Default Capacity: 22 Ah
-      balanceTrigV: 0.03, // Default Balance Trigger: 0.03 V
-      // ==================================
+      relayStates: List.filled(4, false),
+      cellCountSetting: 8,
+      capacitySetting: 22.0,
+      balanceTrigV: 0.03,
       bmsStatus: 'offline',
+      // Inisialisasi list kosong
+      latestOnMs: List.filled(4, null),
+      latestOffMs: List.filled(4, null),
+      relayLogs: [],
     );
   }
 
   BmsState copyWith({
     double? socEKF,
-    double? socCC,
-    double? socKF,
-    double? soh,
-    double? totalVoltage,
-    double? current,
-    double? power,
-    double? tempMos,
-    double? batTemp1,
-    double? batTemp2,
-    double? capacityRemain,
+    socCC,
+    socKF,
+    soh,
+    totalVoltage,
+    current,
+    power,
+    tempMos,
+    batTemp1,
+    batTemp2,
+    capacityRemain,
     List<double>? cellVoltages,
-    List<double>? wireRes,
+    wireRes,
     bool? isBalancing,
-    bool? isCharging,
-    bool? isDischarging,
+    isCharging,
+    isDischarging,
     List<bool>? relayStates,
     int? cellCountSetting,
     double? capacitySetting,
-    double? balanceTrigV,
+    balanceTrigV,
     String? bmsStatus,
+    List<int?>? latestOnMs,
+    List<int?>? latestOffMs,
+    List<RelayTestLog>? relayLogs,
   }) {
     return BmsState(
       socEKF: socEKF ?? this.socEKF,
@@ -132,6 +134,9 @@ class BmsState {
       capacitySetting: capacitySetting ?? this.capacitySetting,
       balanceTrigV: balanceTrigV ?? this.balanceTrigV,
       bmsStatus: bmsStatus ?? this.bmsStatus,
+      latestOnMs: latestOnMs ?? this.latestOnMs,
+      latestOffMs: latestOffMs ?? this.latestOffMs,
+      relayLogs: relayLogs ?? this.relayLogs,
     );
   }
 }
