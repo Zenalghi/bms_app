@@ -44,17 +44,19 @@ class _MainNavigationState extends State<MainNavigation> {
               children: [
                 MetricsScreen(
                   state: state,
-                  onRefresh: widget.onRefresh, // <--- OPER KE METRICS SCREEN
+                  onRefresh: widget.onRefresh,
                 ),
                 // AnalyticsScreen(state: state),
                 BmsControlScreen(
                   state: state,
                   onBmsSwitchToggle: widget.onBmsSwitchToggle,
                   onBmsNumberSubmit: widget.onBmsNumberSubmit,
+                  onRefresh: widget.onRefresh,
                 ),
                 ControlScreen(
                   state: state,
                   onRelayToggle: widget.onRelayToggle,
+                  onRefresh: widget.onRefresh,
                 ),
               ],
             ),

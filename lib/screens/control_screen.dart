@@ -8,31 +8,41 @@ class ControlScreen extends StatelessWidget {
     super.key,
     required this.state,
     required this.onRelayToggle,
+    required this.onRefresh, // <--- TERIMA DARI MAIN NAVIGATION
   });
 
   final BmsState state;
   final void Function(int index, bool value) onRelayToggle;
+  final Future<void> Function() onRefresh; // <--- DEKLARASI FUNGSI
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionHeader(
-            title: 'Hardware Control',
-            subtitle: 'Relay outputs and real-time connectivity status',
-          ),
-          const SizedBox(height: 16),
+    return RefreshIndicator(
+      color: const Color(0xFF00BCD4),
+      backgroundColor: const Color(0xFF1A1A1A),
+      onRefresh: onRefresh, // <--- PANGGIL SAAT DITARIK
+      child: SingleChildScrollView(
+        // Wajib menggunakan AlwaysScrollableScrollPhysics agar bisa ditarik
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionHeader(
+              title: 'Hardware Control',
+              subtitle: 'Relay outputs and real-time connectivity status',
+            ),
+            const SizedBox(height: 16),
 
-          // Card Kontrol Relay
-          RelayControlCard(
-            relayStates: state.relayStates,
-            onRelayChanged: onRelayToggle,
-          ),
-        ],
+            // Card Kontrol Relay
+            RelayControlCard(
+              relayStates: state.relayStates,
+              onRelayChanged: onRelayToggle,
+            ),
+          ],
+        ),
       ),
     );
   }
