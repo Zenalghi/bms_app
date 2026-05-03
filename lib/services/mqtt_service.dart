@@ -48,11 +48,11 @@ class MqttService {
   // =============================
 
   void _subscribeToTopics() {
-    client.subscribe('bms_panel/260216/data/main', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/260216/data/soc_bawaan', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/260216/state/switches', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/260216/state/settings', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/260216/status', MqttQos.atMostOnce);
+    client.subscribe('bms_panel/2602165/data/main', MqttQos.atMostOnce);
+    client.subscribe('bms_panel/2602165/data/soc_bawaan', MqttQos.atMostOnce);
+    client.subscribe('bms_panel/2602165/state/switches', MqttQos.atMostOnce);
+    client.subscribe('bms_panel/2602165/state/settings', MqttQos.atMostOnce);
+    client.subscribe('bms_panel/2602165/status', MqttQos.atMostOnce);
 
     client.updates!.listen((c) {
       final recMess = c[0].payload as MqttPublishMessage;
@@ -118,10 +118,10 @@ class MqttService {
   void publishRelayCommand(int index, bool uiIsOn) {
     final command = uiIsOn ? 'ON' : 'OFF';
     final List<String> relayTopics = [
-      'bms_panel/260216/switch/relay_1/command',
-      'bms_panel/260216/switch/relay_2/command',
-      'bms_panel/260216/switch/relay_3/command',
-      'bms_panel/260216/switch/relay_4/command',
+      'bms_panel/2602165/switch/relay_1/command',
+      'bms_panel/2602165/switch/relay_2/command',
+      'bms_panel/2602165/switch/relay_3/command',
+      'bms_panel/2602165/switch/relay_4/command',
     ];
     _publishString(relayTopics[index], command);
   }
@@ -129,13 +129,13 @@ class MqttService {
   // Kontrol Switch Internal BMS (Charge/Discharge/Balance)
   void publishBmsSwitchCommand(String switchName, bool isOn) {
     final command = isOn ? 'ON' : 'OFF';
-    final topic = 'bms_panel/260216/switch/${switchName}_switch/command';
+    final topic = 'bms_panel/2602165/switch/${switchName}_switch/command';
     _publishString(topic, command);
   }
 
   // Kontrol Setting Angka BMS (Cell Count/Capacity/Balance Trig)
   void publishBmsNumberCommand(String settingName, String value) {
-    final topic = 'bms_panel/260216/number/$settingName/command';
+    final topic = 'bms_panel/2602165/number/$settingName/command';
     _publishString(topic, value);
   }
 
