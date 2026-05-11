@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/bms_state.dart';
-import '../widgets/algorithm_drift_card.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key, required this.state});
@@ -20,7 +19,6 @@ class AnalyticsScreen extends StatelessWidget {
             subtitle: 'Algorithm estimation drift and health indicators',
           ),
           const SizedBox(height: 16),
-          AlgorithmDriftCard(socEKF: state.socEKF, socCC: state.socCC),
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
