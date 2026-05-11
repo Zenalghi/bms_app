@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/bms_state.dart';
-// import 'analytics_screen.dart';
+import 'analytics_screen.dart';
 import 'control_screen.dart';
 import 'metrics_screen.dart';
 import 'bms_control_screen.dart';
@@ -46,7 +46,7 @@ class _MainNavigationState extends State<MainNavigation> {
                   state: state,
                   onRefresh: widget.onRefresh,
                 ),
-                // AnalyticsScreen(state: state),
+                AnalyticsScreen(),
                 BmsControlScreen(
                   state: state,
                   onBmsSwitchToggle: widget.onBmsSwitchToggle,
@@ -72,11 +72,11 @@ class _MainNavigationState extends State<MainNavigation> {
                 selectedIcon: Icon(Icons.bolt),
                 label: 'Metrics',
               ),
-              // NavigationDestination(
-              //   icon: Icon(Icons.analytics_outlined),
-              //   selectedIcon: Icon(Icons.analytics),
-              //   label: 'Analytics',
-              // ),
+              NavigationDestination(
+                icon: Icon(Icons.analytics_outlined),
+                selectedIcon: Icon(Icons.analytics),
+                label: 'Data Cloud',
+              ),
               NavigationDestination(
                 icon: Icon(Icons.battery_charging_full_outlined),
                 selectedIcon: Icon(Icons.battery_charging_full),

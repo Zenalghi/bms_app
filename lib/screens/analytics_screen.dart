@@ -1,135 +1,106 @@
 import 'package:flutter/material.dart';
-
-import '../models/bms_state.dart';
-import '../widgets/algorithm_drift_card.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../models/firebase_state.dart';
 
 class AnalyticsScreen extends StatelessWidget {
-  const AnalyticsScreen({super.key, required this.state});
-
-  final BmsState state;
+  const AnalyticsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionHeader(
-            title: 'Logic Analytics',
-            subtitle: 'Algorithm estimation drift and health indicators',
-          ),
-          const SizedBox(height: 16),
-          AlgorithmDriftCard(socEKF: state.socEKF, socCC: state.socCC),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 520;
+    final databaseRef = FirebaseDatabase.instance.ref('bms_realtime');
 
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  SizedBox(
-                    width: isWide
-                        ? (constraints.maxWidth - 12) / 2
-                        : double.infinity,
-                    child: _IndicatorCard(
-                      label: 'SOC (EKF)',
-                      value: '${state.socEKF.toStringAsFixed(1)}%',
-                      color: const Color(0xFF00BCD4),
-                      description:
-                          'Estimator output used as the main SOC reference.',
-                    ),
-                  ),
-                ],
-              );
-            },
+    return StreamBuilder<DatabaseEvent>(
+      stream: databaseRef.onValue,
+      builder: (context, snapshot) {
+        FirebaseBmsData data = FirebaseBmsData.initial();
+        
+        if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
+          final rawData = Map<dynamic, dynamic>.from(
+            snapshot.data!.snapshot.value as Map
+          );
+          data = FirebaseBmsData.fromMap(rawData);
+        }
+
+        final items = [
+          _DataPoint("SOC (EKF)", "${data.socEKF.toStringAsFixed(1)}%", const Color(0xFF00BCD4)),
+          _DataPoint("SOC (CC)", "${data.socCC.toStringAsFixed(1)}%", Colors.orangeAccent),
+          _DataPoint("Voltage", "${data.voltage.toStringAsFixed(2)}V", Colors.greenAccent),
+          _DataPoint("Current", "${data.current.toStringAsFixed(2)}A", Colors.yellowAccent),
+          _DataPoint("Power", "${data.power.toStringAsFixed(1)}W", Colors.purpleAccent),
+          _DataPoint("Avg Cell", "${data.avgCellV.toStringAsFixed(3)}V", Colors.blueAccent),
+          _DataPoint("Delta V", "${data.deltaV.toStringAsFixed(3)}V", Colors.redAccent),
+          _DataPoint("Max Cell", "${data.maxCellV.toStringAsFixed(3)}V", Colors.green),
+          _DataPoint("Min Cell", "${data.minCellV.toStringAsFixed(3)}V", Colors.red),
+          _DataPoint("MOS Temp", "${data.mosTemp}°C", Colors.deepOrangeAccent),
+          _DataPoint("Bat Temp 1", "${data.batTemp1}°C", Colors.tealAccent),
+          _DataPoint("Bat Temp 2", "${data.batTemp2}°C", Colors.tealAccent),
+          _DataPoint("Room Temp", "${data.roomTemp}°C", Colors.pinkAccent),
+          _DataPoint("Humidity", "${data.roomHum.toStringAsFixed(0)}%", Colors.lightBlueAccent),
+        ];
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Restored Header
+              const Text(
+                'Data Cloud',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'BMS Data from Firebase',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              
+              // 2-Column Grid
+              GridView.builder(
+                shrinkWrap: true, // Necessary inside SingleChildScrollView
+                physics: const NeverScrollableScrollPhysics(), 
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.4,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) => _buildCard(items[index]),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
-}
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-        ),
-      ],
-    );
-  }
-}
-
-class _IndicatorCard extends StatelessWidget {
-  const _IndicatorCard({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.description,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildCard(_DataPoint item) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.16)),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: item.color.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
+          Text(item.title, 
+            style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text(
-            description,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
-          ),
+          Text(item.value, 
+            style: TextStyle(color: item.color, fontSize: 22, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
+}
+
+class _DataPoint {
+  final String title;
+  final String value;
+  final Color color;
+  _DataPoint(this.title, this.value, this.color);
 }

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "989560527793",
+    "firebase_url": "https://bmsv1-f5b30-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "bmsv1-f5b30",
+    "storage_bucket": "bmsv1-f5b30.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989560527793:android:19c4e17370ca9702f67b90",
+        "android_client_info": {
+          "package_name": "com.example.bms_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdE4sPK7bL587UaFkAGKMeaF5y4SPkWMU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
