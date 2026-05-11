@@ -6,6 +6,11 @@ import '../models/bms_state.dart';
 class MqttService {
   final String broker = 'broker.mqtt.cool';
   final int port = 1883;
+
+  // === PREFIX TOPIC (UBAH DI SINI JIKA TEMANMU GANTI TOPIC) ===
+  final String mqttPrefix = 'bms_panel/2602165';
+  // ============================================================
+
   late MqttServerClient client;
   final void Function(BmsState) onStateUpdated;
   BmsState currentState;
@@ -32,7 +37,7 @@ class MqttService {
     }
   }
 
-  // === FUNGSI RECONNECT BARU ===
+  // === FUNGSI RECONNECT (Dipanggil saat Pull-to-Refresh) ===
   Future<void> reconnect() async {
     print('Mencoba menyambungkan ulang MQTT...');
     if (client.connectionStatus?.state == MqttConnectionState.connected) {
@@ -46,17 +51,16 @@ class MqttService {
     await connect();
   }
 
-  // =============================
   final Map<int, Map<String, dynamic>> _pendingRelayCommands = {};
-  void _subscribeToTopics() {
-    client.subscribe('bms_panel/2602165/data/main', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/2602165/data/soc_bawaan', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/2602165/state/switches', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/2602165/state/settings', MqttQos.atMostOnce);
-    client.subscribe('bms_panel/2602165/status', MqttQos.atMostOnce);
 
-    // Topik baru khusus untuk konfirmasi balik status Relay dari ESP32
-    client.subscribe('bms_panel/2602165/state/relays', MqttQos.atMostOnce);
+  void _subscribeToTopics() {
+    // Menggunakan variabel mqttPrefix agar dinamis dan tidak ada typo
+    client.subscribe('$mqttPrefix/data/main', MqttQos.atMostOnce);
+    client.subscribe('$mqttPrefix/data/soc_bawaan', MqttQos.atMostOnce);
+    client.subscribe('$mqttPrefix/state/switches', MqttQos.atMostOnce);
+    client.subscribe('$mqttPrefix/state/settings', MqttQos.atMostOnce);
+    client.subscribe('$mqttPrefix/status', MqttQos.atMostOnce);
+    client.subscribe('$mqttPrefix/state/relays', MqttQos.atMostOnce);
 
     client.updates!.listen((c) {
       final recMess = c[0].payload as MqttPublishMessage;
@@ -85,31 +89,26 @@ class MqttService {
 
         bool isUpdated = false;
 
-        // Cek 4 relay
         for (int i = 0; i < 4; i++) {
           String key = 'relay_${i + 1}'; // contoh: relay_1
           if (data.containsKey(key)) {
-            String actualState = data[key]; // "ON" atau "OFF"
+            String actualState = data[key];
 
-            // Cek apakah relay ini sedang kita tunggu responsnya
             if (_pendingRelayCommands.containsKey(i)) {
               if (_pendingRelayCommands[i]!['expectedState'] == actualState) {
-                // Berhasil! Hitung selisih waktu
                 DateTime startTime = _pendingRelayCommands[i]!['startTime'];
                 int responseTimeMs = DateTime.now()
                     .difference(startTime)
                     .inMilliseconds;
 
-                // Hapus dari antrean
                 _pendingRelayCommands.remove(i);
 
-                // Update UI log
-                if (actualState == 'ON')
+                if (actualState == 'ON') {
                   newOnMs[i] = responseTimeMs;
-                else
+                } else {
                   newOffMs[i] = responseTimeMs;
+                }
 
-                // Masukkan ke database untuk dieksport CSV
                 newLogs.add(RelayTestLog(i, actualState, responseTimeMs));
                 isUpdated = true;
               }
@@ -125,9 +124,8 @@ class MqttService {
           );
         }
       }
-      // Sisa parsing data lainnya (main, soc_bawaan, switches) tetap di sini...
+      // Parsing Data Main
       else if (topic.contains('data/main')) {
-        // ... kode bawaanmu sebelumnya ...
         currentState = currentState.copyWith(
           totalVoltage: (data['voltage'] ?? 0).toDouble(),
           current: (data['current'] ?? 0).toDouble(),
@@ -142,18 +140,24 @@ class MqttService {
             (data['wire_res'] ?? []).map((x) => (x as num).toDouble()),
           ),
         );
-      } else if (topic.contains('data/soc_bawaan')) {
+      }
+      // Parsing Data SOC Bawaan
+      else if (topic.contains('data/soc_bawaan')) {
         currentState = currentState.copyWith(
           socCC: (data['soc_jk'] ?? 0).toDouble(),
           capacityRemain: (data['capacity_remain'] ?? 0).toDouble(),
         );
-      } else if (topic.contains('state/switches')) {
+      }
+      // Parsing Status Switch BMS
+      else if (topic.contains('state/switches')) {
         currentState = currentState.copyWith(
           isCharging: data['charge_switch'] == 'ON',
           isDischarging: data['discharge_switch'] == 'ON',
           isBalancing: data['balance_switch'] == 'ON',
         );
-      } else if (topic.contains('state/settings')) {
+      }
+      // Parsing Setting BMS
+      else if (topic.contains('state/settings')) {
         currentState = currentState.copyWith(
           cellCountSetting: data['cell_count_setting'] ?? 8,
           capacitySetting: (data['capacity_setting'] ?? 0).toDouble(),
@@ -171,10 +175,10 @@ class MqttService {
   void publishRelayCommand(int index, bool uiIsOn) {
     final command = uiIsOn ? 'ON' : 'OFF';
     final List<String> relayTopics = [
-      'bms_panel/2602165/switch/relay_1/command',
-      'bms_panel/2602165/switch/relay_2/command',
-      'bms_panel/2602165/switch/relay_3/command',
-      'bms_panel/2602165/switch/relay_4/command',
+      '$mqttPrefix/switch/relay_1/command',
+      '$mqttPrefix/switch/relay_2/command',
+      '$mqttPrefix/switch/relay_3/command',
+      '$mqttPrefix/switch/relay_4/command',
     ];
 
     // MULAI STOPWATCH
@@ -189,13 +193,13 @@ class MqttService {
   // Kontrol Switch Internal BMS (Charge/Discharge/Balance)
   void publishBmsSwitchCommand(String switchName, bool isOn) {
     final command = isOn ? 'ON' : 'OFF';
-    final topic = 'bms_panel/26021655/switch/${switchName}_switch/command';
+    final topic = '$mqttPrefix/switch/${switchName}_switch/command';
     _publishString(topic, command);
   }
 
   // Kontrol Setting Angka BMS (Cell Count/Capacity/Balance Trig)
   void publishBmsNumberCommand(String settingName, String value) {
-    final topic = 'bms_panel/26021655/number/$settingName/command';
+    final topic = '$mqttPrefix/number/$settingName/command';
     _publishString(topic, value);
   }
 
