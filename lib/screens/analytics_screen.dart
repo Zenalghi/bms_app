@@ -43,7 +43,6 @@ class AnalyticsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Restored Header
               const Text(
                 'Data Cloud',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
@@ -55,9 +54,8 @@ class AnalyticsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               
-              // 2-Column Grid
               GridView.builder(
-                shrinkWrap: true, // Necessary inside SingleChildScrollView
+                shrinkWrap: true, 
                 physics: const NeverScrollableScrollPhysics(), 
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
@@ -84,14 +82,28 @@ class AnalyticsScreen extends StatelessWidget {
         border: Border.all(color: item.color.withOpacity(0.1)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center, // Centered vertically
+        crossAxisAlignment: CrossAxisAlignment.center, // Centered horizontally
         children: [
-          Text(item.title, 
-            style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            item.title, 
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white54, 
+              fontSize: 12, 
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(item.value, 
-            style: TextStyle(color: item.color, fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(
+            item.value, 
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: item.color, 
+              fontSize: 22, 
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
