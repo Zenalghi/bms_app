@@ -42,17 +42,14 @@ class _MainNavigationState extends State<MainNavigation> {
             child: IndexedStack(
               index: _selectedIndex,
               children: [
-                MetricsScreen(
-                  state: state,
-                  onRefresh: widget.onRefresh,
-                ),
-                AnalyticsScreen(),
+                MetricsScreen(state: state, onRefresh: widget.onRefresh),
                 BmsControlScreen(
                   state: state,
                   onBmsSwitchToggle: widget.onBmsSwitchToggle,
                   onBmsNumberSubmit: widget.onBmsNumberSubmit,
                   onRefresh: widget.onRefresh,
                 ),
+                AnalyticsScreen(),
                 ControlScreen(
                   state: state,
                   onRelayToggle: widget.onRelayToggle,
@@ -73,14 +70,14 @@ class _MainNavigationState extends State<MainNavigation> {
                 label: 'Metrics',
               ),
               NavigationDestination(
-                icon: Icon(Icons.analytics_outlined),
-                selectedIcon: Icon(Icons.analytics),
-                label: 'Data Cloud',
-              ),
-              NavigationDestination(
                 icon: Icon(Icons.battery_charging_full_outlined),
                 selectedIcon: Icon(Icons.battery_charging_full),
                 label: 'BMS',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.analytics_outlined),
+                selectedIcon: Icon(Icons.analytics),
+                label: 'Data Cloud',
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings_remote_outlined),
