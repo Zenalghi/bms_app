@@ -209,4 +209,11 @@ class MqttService {
     client.publishMessage(topic, MqttQos.atMostOnce, builder.payload!);
     print('Command sent -> Topic: $topic | Payload: $payload');
   }
+
+  // --- FUNGSI BARU UNTUK KONTROL OLED ---
+  void publishOledPageCommand(String pagePayload) {
+    // pagePayload bisa berisi "NEXT" atau angka "1" sampai "7"
+    final topic = '$mqttPrefix/display/page/command';
+    _publishString(topic, pagePayload);
+  }
 }

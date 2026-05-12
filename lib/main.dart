@@ -3,16 +3,14 @@ import 'package:flutter/material.dart';
 
 import 'models/bms_state.dart';
 import 'screens/main_navigation.dart';
-import 'services/mqtt_service.dart'; 
+import 'services/mqtt_service.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -55,7 +53,11 @@ class _MyAppState extends State<MyApp> {
   Future<void> _handleRefresh() async {
     await _mqttService.reconnect();
   }
+
   // ===========================
+  void _handleOledPageChange(String pagePayload) {
+    _mqttService.publishOledPageCommand(pagePayload);
+  }
 
   void _handleRelayToggle(int index, bool value) {
     _state = _state.copyWith(
@@ -115,6 +117,7 @@ class _MyAppState extends State<MyApp> {
         onBmsSwitchToggle: _handleBmsSwitchToggle,
         onBmsNumberSubmit: _handleBmsNumberSubmit,
         onRefresh: _handleRefresh,
+        onOledPageChange: _handleOledPageChange,
       ),
     );
   }

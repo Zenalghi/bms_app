@@ -227,8 +227,13 @@ class RelayControlCard extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00BCD4).withValues(alpha: 0.2),
-                foregroundColor: const Color(0xFF00BCD4),
+                backgroundColor: const Color.fromARGB(
+                  255,
+                  0,
+                  188,
+                  212,
+                ).withValues(alpha: 0.2),
+                foregroundColor: const Color.fromARGB(255, 0, 188, 212),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
