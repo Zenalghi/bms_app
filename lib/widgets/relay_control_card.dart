@@ -180,7 +180,7 @@ class RelayControlCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           // METRIK RESPONSE TIME UI
                           Text(
-                            'ON: ${onMs != null ? '$onMs ms' : '-'}  |  OFF: ${offMs != null ? '$offMs ms' : '-'}',
+                            'ON:${onMs != null ? '$onMs ms' : '-'} | OFF:${offMs != null ? '$offMs ms' : '-'}',
                             style: TextStyle(
                               fontSize: 11,
                               color: enabled

@@ -4,7 +4,8 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import '../models/bms_state.dart';
 
 class MqttService {
-  final String broker = 'broker.mqtt.cool';
+  // final String broker = 'broker.mqtt.cool';
+  final String broker = 'broker.emqx.io';
   final int port = 1883;
 
   // === PREFIX TOPIC (UBAH DI SINI JIKA TEMANMU GANTI TOPIC) ===
